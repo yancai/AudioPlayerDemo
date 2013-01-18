@@ -29,22 +29,23 @@ namespace AudioPlay.Pages
         public PlayPage()
         {
             InitializeComponent();
-            Loaded += new RoutedEventHandler(PlayPage_Loaded);
+            Loaded += PlayPageLoaded;
         }
+        
+        #region Const Datas
 
-        void PlayPage_Loaded(object sender, RoutedEventArgs e)
-        {
-            IsPlaying = null;
-        }
+        private const int Latency = 120;
+        private const string MP3Extension = ".mp3";
+
+        #endregion
 
         #region Private Members
         
         private string _filePath = "";
         private int BUFFER_SIZE = 1024 * 10;
         private static bool tempoChanged = false;
-        private static bool pitchChanged;
-
-
+        //private static bool pitchChanged;
+        
         private CusBufferedWaveProvider provider;
 
         private Mp3FileReader reader;
@@ -52,7 +53,7 @@ namespace AudioPlay.Pages
         private static WaveChannel32 waveChannel;
 
         //private static SoundTouchNet.SoundStretcher stretcher;
-        private static SoundTouch.SoundTouchAPI soundTouch;
+        private static SoundTouchAPI soundTouch;
         private TimeStretchProfile timeStretchProfile;
 
         private static IWavePlayer player;
@@ -60,33 +61,22 @@ namespace AudioPlay.Pages
         private Thread _playThread;
 
         private object PropertiesLock = new object();
+
+        private TimeSpan totalTime;
+        private DispatcherTimer timer;
+        private bool isDragging = false;
+
+        //private static WaveFileWriter waveFileWriter;
+
         #endregion
 
-        private void Button_Open_Click(object sender, RoutedEventArgs e)
+        #region Private Methods
+
+        private void PlayPageLoaded(object sender, RoutedEventArgs e)
         {
-            if (reader != null)
-            {
-                Dispose();
-                StopPlay();
-            }
-
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-
-            if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-            {
-                return;
-            }
-            _filePath = openFileDialog.FileName;
-
-            Init();
-            InitTimeStretchProfile();
-            InitTime();
-            //player.Play();
-            timer.Start();
-            _playThread.Start();
-            //player.Play();
-            IsPlaying = true;
+            IsPlaying = null;
         }
+
 
         private void Init()
         {
@@ -99,18 +89,16 @@ namespace AudioPlay.Pages
 
             // 初始化 reader
             reader = new Mp3FileReader(_filePath);
-            
+
             // 初始化 provider
             blockAlignReductionStream = new BlockAlignReductionStream(reader);
             waveChannel = new WaveChannel32(blockAlignReductionStream);
             Dispatcher.Invoke(new Action(() => { waveChannel.Volume = Volume; }));
-            //provider = new CusBufferedWaveProvider(waveChannel.WaveFormat);
 
-            _format = waveChannel.WaveFormat;
-            waveFileWriter = new WaveFileWriter("./test.mp3", _format);
+            //waveFileWriter = new WaveFileWriter("./test.mp3", waveChannel.WaveFormat);
 
             provider = new CusBufferedWaveProvider(waveChannel.WaveFormat);
-            
+
             // 初始化 player
             //player = new WasapiOut(global::NAudio.CoreAudioApi.AudioClientShareMode.Shared, Latency);
             //player = new WaveOut();
@@ -143,11 +131,6 @@ namespace AudioPlay.Pages
             _playThread.Name = "PlayThread";
         }
 
-
-        private static WaveFormat _format;// = WaveFormat.CreateCustomFormat(WaveFormatEncoding.IeeeFloat, 44100, 2, 352800, 8, 32);
-        private static WaveFileWriter waveFileWriter;// = new WaveFileWriter("./test.mp3", _format);
-        private static int itemp = 0;
-
         private void ProcessWave()
         {
             MsToBytes(Latency);
@@ -162,23 +145,9 @@ namespace AudioPlay.Pages
             int bytesRead = 0;
             do
             {
-                //float te = ((tempTempo * 10) + 1) % 15 / 10;
-                //stretcher.Tempo = 1.1f;
-                //if (provider.BuffersCount > 2)
-                //{
-                //    Thread.Sleep(10);
-                //    continue;
-                //}
-
                 //bytesRead = waveChannel.Read(buffer, 0, BUFFER_SIZE);
                 bytesRead = waveChannel.Read(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
                 //bytesRead = reader.Read(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
-                if (itemp == 100)
-                {
-                    //Console.WriteLine();
-                }
-                itemp++;
-                
 
                 if (!finished)
                 {
@@ -193,29 +162,24 @@ namespace AudioPlay.Pages
                         SetSoundSharpValues();
                         ApplySoundTouchTimeStretchProfile();
 
+                        #region Test: write buffers into test.mp3
                         //waveFileWriter.Write(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
-                        bool finish = false;
+                        //bool finish = false;
+                        //if (finish)
+                        //{
+                        //    waveFileWriter.Close();
+                        //} 
+                        #endregion
 
-                        if (finish)
-                        {
-                            waveFileWriter.Close();
-                        } 
-
-                        float floatsRead = bytesRead/((sizeof (float))*waveChannel.WaveFormat.Channels);
+                        float floatsRead = bytesRead / ((sizeof(float)) * waveChannel.WaveFormat.Channels);
                         soundTouch.PutSamples(convertInputBuffer.Floats, (uint)floatsRead);
-                        //stretcher.PutSamplesFromBuffer(buffer, 0, bytesRead);
                     }
                 }
 
-                //bytesRead = stretcher.ReceiveSamplesToBuffer(bufferGetback, 0, BUFFER_SIZE);
                 uint outBufferSizeFloats = (uint)convertOutputBuffer.Floats.Length / (uint)(sizeof(float) * waveChannel.WaveFormat.Channels);
                 uint receivecount;
                 receivecount = soundTouch.ReceiveSamples(convertOutputBuffer.Floats, outBufferSizeFloats);
 
-               
-
-                //provider.AddSamples(bufferGetback, 0, bytesRead, reader.CurrentTime);
-                //provider.AddSamples(convertOutputBuffer.Bytes, 0, (int)receivecount * sizeof(byte) * waveChannel.WaveFormat.Channels, reader.CurrentTime); ;
                 provider.AddSamples(convertOutputBuffer.Bytes, 0, (int)receivecount * sizeof(float) * reader.WaveFormat.Channels, reader.CurrentTime); ;
 
                 while (provider.BuffersCount > 2)
@@ -237,11 +201,9 @@ namespace AudioPlay.Pages
             if (tempoChanged)
             {
                 float tempo = TempoValue;
-                // Assign updated tempo
                 soundTouch.SetTempo(tempo);
                 tempoChanged = false;
 
-                //ApplySoundTouchTimeStretchProfile();
             }
 
             //if (pitchChanged)
@@ -256,7 +218,7 @@ namespace AudioPlay.Pages
 
         private bool CheckFile(string filePath)
         {
-            if ( !File.Exists(filePath) )
+            if (!File.Exists(filePath))
             {
                 return false;
             }
@@ -337,36 +299,14 @@ namespace AudioPlay.Pages
             return bytes;
         }
 
-        internal void Terminate()
+        private void StopPlay()
         {
-            if (soundTouch != null)
+            if (player == null)
             {
-
-                player.Dispose();
-                soundTouch.Clear();
-                soundTouch.Dispose();                
+                return;
             }
+            Dispatcher.Invoke(new Action(() => { IsPlaying = null; }));
         }
-
-        #region Const Datas
-
-        
-        private const int Latency = 120;
-        private const string MP3Extension = ".mp3";
-
-        #endregion
-
-        private void Button_Test_Click(object sender, RoutedEventArgs e)
-        {
-            //soundTouch.SetTempo(1.8f);
-            //waveChannel.CurrentTime += new TimeSpan(90);
-            player.Pause();
-        }
-
-
-        private TimeSpan totalTime;
-        private DispatcherTimer timer;
-        private bool isDragging = false;
 
         private void InitTime()
         {
@@ -375,7 +315,7 @@ namespace AudioPlay.Pages
             timer.Tick += new EventHandler(timer_Tick);
 
             totalTime = reader.TotalTime;
-            string totalTimeString = string.Format("{0:00}:{1:00}:{2:00}", 
+            string totalTimeString = string.Format("{0:00}:{1:00}:{2:00}",
                 totalTime.Hours, totalTime.Minutes, totalTime.Seconds);
             Run_TotalTime.Text = totalTimeString;
 
@@ -383,12 +323,56 @@ namespace AudioPlay.Pages
             Slider_Position.SmallChange = 0.1;
         }
 
-        void timer_Tick(object sender, EventArgs e)
+        private void timer_Tick(object sender, EventArgs e)
         {
             if (!isDragging)
             {
                 Slider_Position.Value = waveChannel.CurrentTime.TotalSeconds;
             }
+        }
+
+        #endregion
+
+        #region Dispose
+
+        internal void Dispose()
+        {
+            _playThread.Abort();
+            soundTouch.Dispose();
+            blockAlignReductionStream.Dispose();
+            reader.Dispose();
+            waveChannel.Dispose();
+            player.Dispose();
+            //waveFileWriter.Dispose();
+        }
+
+        #endregion
+        
+        #region UI Event
+
+        private void Button_Open_Click(object sender, RoutedEventArgs e)
+        {
+            if (reader != null)
+            {
+                Dispose();
+                StopPlay();
+            }
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+
+            if (openFileDialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+            {
+                return;
+            }
+            _filePath = openFileDialog.FileName;
+
+            Init();
+            InitTimeStretchProfile();
+            InitTime();
+            timer.Start();
+            _playThread.Start();
+            //player.Play();
+            IsPlaying = true;
         }
 
         private void Slider_Position_DragStarted(object sender, System.Windows.Controls.Primitives.DragStartedEventArgs e)
@@ -410,35 +394,24 @@ namespace AudioPlay.Pages
             Run_CurrentTime.Text = currentTimeString;
         }
 
-        internal void Dispose()
-        {
-            _playThread.Abort();
-            soundTouch.Dispose();
-            blockAlignReductionStream.Dispose();
-            reader.Dispose();
-            waveChannel.Dispose();
-            player.Dispose();
-            waveFileWriter.Dispose();
-        }
-
         private void Button_Play_Click(object sender, RoutedEventArgs e)
         {
             if (reader == null)
             {
                 return;
             }
-            
+
             Dispatcher.Invoke(new Action(() =>
-                                             {
-                                                 if (IsPlaying == true)
-                                                 {
-                                                     IsPlaying = false;
-                                                 }
-                                                 else if (IsPlaying == false)
-                                                 {
-                                                     IsPlaying = true;
-                                                 }
-                                             }));
+            {
+                if (IsPlaying == true)
+                {
+                    IsPlaying = false;
+                }
+                else if (IsPlaying == false)
+                {
+                    IsPlaying = true;
+                }
+            }));
         }
 
         private void Button_Stop_Click(object sender, RoutedEventArgs e)
@@ -446,13 +419,10 @@ namespace AudioPlay.Pages
             StopPlay();
         }
 
-        private void StopPlay()
+        private void Button_Test_Click(object sender, RoutedEventArgs e)
         {
-            if (player == null)
-            {
-                return;
-            }
-            Dispatcher.Invoke(new Action(() => { IsPlaying = null; }));
         }
+
+        #endregion
     }
 }
