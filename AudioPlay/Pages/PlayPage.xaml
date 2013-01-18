@@ -1,0 +1,81 @@
+﻿<Page x:Class="AudioPlay.Pages.PlayPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      mc:Ignorable="d" 
+      Height="330" Width="590"
+      Name="page"
+	Title="PlayPage">
+
+    <Grid>
+        <Grid x:Name="LayoutRoot">
+            <TextBlock Margin="118,6,301,306" FontSize="14">
+                <Run>当前播放状态：</Run>
+                <Run Foreground="Red">
+                    <Run.Style>
+                        <Style TargetType="Run">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="false">
+                                <Setter Property="Text" Value="暂停"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="true">
+                                <Setter Property="Text" Value="播放"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="null">
+                                <Setter Property="Text" Value="停止"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    </Run.Style>
+                </Run>
+            </TextBlock>
+            <TextBlock Name="TextBlock_FileName" Margin="51,90,201,199" FontSize="22" TextAlignment="Left" FontFamily="Times New Roman"></TextBlock>
+            <Button x:Name="Button_Open" Content="打开" HorizontalAlignment="Left" Margin="60,30,0,0" VerticalAlignment="Top" Width="70" Height="30"
+                    Click="Button_Open_Click"/>
+            <Button x:Name="Button_Play" Margin="219,0,301,270" VerticalAlignment="Bottom" Height="30" Width="70" Click="Button_Play_Click">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="true">
+                                <Setter Property="Content" Value="暂停"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="false">
+                                <Setter Property="Content" Value="播放"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ElementName=page, Path=IsPlaying}" Value="null">
+                                <Setter Property="Content" Value="未选择"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Name="Button_Stop" Height="30" Width="70" Margin="378,30,142,270" Click="Button_Stop_Click" Content="停止"></Button>
+            <Slider x:Name="Slider_Position" Margin="114,0,260,112.418" Height="22" VerticalAlignment="Bottom"
+                    ValueChanged="Slider_Position_ValueChanged"
+                    Thumb.DragStarted="Slider_Position_DragStarted" Thumb.DragCompleted="Slider_Position_DragCompleted"/>
+            <TextBlock HorizontalAlignment="Left" Margin="349,0,0,115.5" TextWrapping="Wrap"  VerticalAlignment="Bottom">
+                <Run Name="Run_CurrentTime"></Run>
+                <Run> : </Run>
+                <Run Name="Run_TotalTime"></Run>
+            </TextBlock>
+            <Slider x:Name="Slider_Tempo" Margin="114,0,260,57.081" VerticalAlignment="Bottom"
+                    Value="{Binding ElementName=page, Path=Tempo}"
+                    Maximum="2.0" Minimum="0.5" Ticks="0.5 1.0 1.5 2.0" TickPlacement="TopLeft"/>
+            <TextBlock HorizontalAlignment="Right" Margin="0,0,175.853,60.163" TextWrapping="Wrap" VerticalAlignment="Bottom">
+                <Run Text="{Binding ElementName=page, Path=Tempo, StringFormat=0.0}"></Run>
+            </TextBlock>
+                       
+            <Slider x:Name="Slider_Volume" HorizontalAlignment="Right" Margin="0,30,68.853,54" Orientation="Vertical" 
+                    Maximum="1" Minimum="0" Ticks="0.0 0.5 1.0" TickPlacement="BottomRight"
+                    Value="{Binding ElementName=page, Path=Volume, StringFormat=0%}"/>
+            <TextBlock HorizontalAlignment="Right" Margin="0,115,8,0" TextWrapping="Wrap" VerticalAlignment="Top"
+                       Foreground="{Binding ElementName=page, Path=Volume, Mode=OneWay, Converter={StaticResource ConvertColor}}"
+                       Text="{Binding ElementName=Slider_Volume, Path=Value, StringFormat=0%}" />
+            <TextBlock HorizontalAlignment="Left" Margin="27,0,0,115.5" TextWrapping="Wrap" Text="进度" VerticalAlignment="Bottom"/>
+            <TextBlock HorizontalAlignment="Left" Margin="27,0,0,60.163" TextWrapping="Wrap" Text="速度" VerticalAlignment="Bottom"/>
+            <TextBlock HorizontalAlignment="Right" Margin="0,0,67.853,21.163" TextWrapping="Wrap" Text="音量" VerticalAlignment="Bottom"/>
+            <Button Content="Test" Height="23" HorizontalAlignment="Left" Margin="373,301,0,0" Name="Button_Test" Click="Button_Test_Click" VerticalAlignment="Top" Width="75" />
+        </Grid>
+    </Grid>
+</Page>

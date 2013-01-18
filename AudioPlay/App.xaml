@@ -1,0 +1,9 @@
+﻿<Application x:Class="AudioPlay.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:Convert="clr-namespace:AudioPlay.Converter"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <Convert:ConvertColor x:Key="ConvertColor"/>
+    </Application.Resources>
+</Application>
