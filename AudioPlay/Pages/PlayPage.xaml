@@ -63,7 +63,7 @@
                     Value="{Binding ElementName=page, Path=Tempo}"
                     Maximum="2.0" Minimum="0.5" Ticks="0.5 1.0 1.5 2.0" TickPlacement="TopLeft"/>
             <TextBlock HorizontalAlignment="Right" Margin="0,0,175.853,60.163" TextWrapping="Wrap" VerticalAlignment="Bottom">
-                <Run Text="{Binding ElementName=page, Path=Tempo, StringFormat=0.0}"></Run>
+                <Run Text="{Binding ElementName=page, Path=Tempo, StringFormat=0.00}"></Run>
             </TextBlock>
                        
             <Slider x:Name="Slider_Volume" HorizontalAlignment="Right" Margin="0,30,68.853,54" Orientation="Vertical" 

@@ -160,7 +160,7 @@ namespace AudioPlay.Pages
                     else
                     {
                         SetSoundSharpValues();
-                        ApplySoundTouchTimeStretchProfile();
+                        //ApplySoundTouchTimeStretchProfile();
 
                         #region Test: write buffers into test.mp3
                         //waveFileWriter.Write(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
@@ -203,7 +203,7 @@ namespace AudioPlay.Pages
                 float tempo = TempoValue;
                 soundTouch.SetTempo(tempo);
                 tempoChanged = false;
-
+                ApplySoundTouchTimeStretchProfile();
             }
 
             //if (pitchChanged)
