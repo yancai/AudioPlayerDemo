@@ -39,7 +39,7 @@ namespace AudioPlay
                 //{
                 //    throw new InvalidOperationException("Too many queued buffers");
                 //}
-                _audioBufferQueue.Enqueue(new AudioBufferCus(buffer, currentTime));
+                _audioBufferQueue.Enqueue(new AudioBufferCus(nbuffer, currentTime));
             }
         }
 
@@ -49,59 +49,57 @@ namespace AudioPlay
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            int readCount = 0;
-            while (readCount < count)
+            int read = 0;
+            while (read < count)
             {
-                int requiredCount = count - readCount;
-                AudioBufferCus audioBufferCus = null;
+                int required = count - read;
+                AudioBufferCus audioBuffer = null;
                 lock (_audioBufferQueue)
                 {
                     if (_audioBufferQueue.Count > 0)
                     {
-                        //return 0;
-                        audioBufferCus = _audioBufferQueue.Peek();
+                        audioBuffer = _audioBufferQueue.Peek();
                     }
-                    //audioBufferCus = _audioBufferQueue.Peek();
                 }
 
-                if (audioBufferCus == null)
+                if (audioBuffer == null)
                 {
-                    // 用空数据填充剩余部分
-                    for (int n = 0; n < readCount; n++)
-                    {
+                    // Return a zero filled buffer
+                    for (int n = 0; n < required; n++)
                         buffer[offset + n] = 0;
-                    }
-                    readCount += requiredCount;
+                    read += required;
                 }
-                else
+                else // There is an audio buffer - let's play it
                 {
-                    int needCount = audioBufferCus.Buffer.Count() - audioBufferCus.Position;
+                    int nread = audioBuffer.Buffer.Length - audioBuffer.Position;
 
-                    //// TODO:时间改变
+                    //// Fire PlayPositionChanged event
                     //if (PlayPositionChanged != null)
                     //{
-                    //    PlayPositionChanged(this, new BufferedPlayEventArgs(audioBufferCus.CurrentTime));
+                    //    PlayPositionChanged(this, new BufferedPlayEventArgs(audioBuffer.CurrentTime));
                     //}
 
-                    if (needCount <= requiredCount)
+                    // If this buffer must be read in it's entirety
+                    if (nread <= required)
                     {
-                        Buffer.BlockCopy(audioBufferCus.Buffer, audioBufferCus.Position, buffer, offset + readCount, needCount);
-                        readCount += needCount;
+                        // Read entire buffer
+                        Buffer.BlockCopy(audioBuffer.Buffer, audioBuffer.Position, buffer, offset + read, nread);
+                        read += nread;
 
                         lock (_audioBufferQueue)
                         {
                             _audioBufferQueue.Dequeue();
                         }
                     }
-                    else
+                    else // the number of bytes that can be read is greater than that required
                     {
-                        Buffer.BlockCopy(audioBufferCus.Buffer, audioBufferCus.Position, buffer, offset + readCount, requiredCount);
-                        audioBufferCus.Position += requiredCount;
-                        readCount += requiredCount;
+                        Buffer.BlockCopy(audioBuffer.Buffer, audioBuffer.Position, buffer, offset + read, required);
+                        audioBuffer.Position += required;
+                        read += required;
                     }
                 }
             }
-            return readCount;
+            return read;
         }
         
     }

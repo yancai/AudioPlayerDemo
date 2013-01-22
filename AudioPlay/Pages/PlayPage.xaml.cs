@@ -34,7 +34,7 @@ namespace AudioPlay.Pages
         
         #region Const Datas
 
-        private const int Latency = 120;
+        private const int Latency = 125;
         private const string MP3Extension = ".mp3";
 
         #endregion
@@ -65,6 +65,8 @@ namespace AudioPlay.Pages
         private TimeSpan totalTime;
         private DispatcherTimer timer;
         private bool isDragging = false;
+
+        private bool stopWorker;
 
         //private static WaveFileWriter waveFileWriter;
 
@@ -133,7 +135,7 @@ namespace AudioPlay.Pages
 
         private void ProcessWave()
         {
-            MsToBytes(Latency);
+            //MsToBytes(Latency);
             byte[] inputBuffer = new byte[BUFFER_SIZE * sizeof(float)];
             byte[] soundTouchOutBuffer = new byte[BUFFER_SIZE * sizeof(float)];
 
@@ -143,55 +145,52 @@ namespace AudioPlay.Pages
             byte[] buffer = new byte[BUFFER_SIZE];
             bool finished = false;
             int bytesRead = 0;
-            do
+            stopWorker = false;
+            while ( !stopWorker && waveChannel.Position < waveChannel.Length)
             {
                 //bytesRead = waveChannel.Read(buffer, 0, BUFFER_SIZE);
                 bytesRead = waveChannel.Read(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
                 //bytesRead = reader.Read(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
 
-                if (!finished)
-                {
-                    if (bytesRead == 0)
-                    {
-                        finished = true;
-                        //stretcher.Flush();
-                        soundTouch.Flush();
-                    }
-                    else
-                    {
-                        SetSoundSharpValues();
-                        //ApplySoundTouchTimeStretchProfile();
-
-                        #region Test: write buffers into test.mp3
-                        //waveFileWriter.Write(convertInputBuffer.Bytes, 0, convertInputBuffer.Bytes.Length);
-                        //bool finish = false;
-                        //if (finish)
-                        //{
-                        //    waveFileWriter.Close();
-                        //} 
-                        #endregion
-
-                        float floatsRead = bytesRead / ((sizeof(float)) * waveChannel.WaveFormat.Channels);
-                        soundTouch.PutSamples(convertInputBuffer.Floats, (uint)floatsRead);
-                    }
-                }
-
-                uint outBufferSizeFloats = (uint)convertOutputBuffer.Floats.Length / (uint)(sizeof(float) * waveChannel.WaveFormat.Channels);
+                SetSoundSharpValues();
+                
+                int floatsRead = bytesRead / ((sizeof(float)) * waveChannel.WaveFormat.Channels);
+                soundTouch.PutSamples(convertInputBuffer.Floats, (uint)floatsRead);
+                
                 uint receivecount;
-                receivecount = soundTouch.ReceiveSamples(convertOutputBuffer.Floats, outBufferSizeFloats);
 
-                provider.AddSamples(convertOutputBuffer.Bytes, 0, (int)receivecount * sizeof(float) * reader.WaveFormat.Channels, reader.CurrentTime); ;
+                do
+                {// 榨干SoundTouch里面的数据
+                    uint outBufferSizeFloats = (uint)convertOutputBuffer.Bytes.Length / (uint)(sizeof(float) * waveChannel.WaveFormat.Channels);
 
-                while (provider.BuffersCount > 2)
-                {
-                    Thread.Sleep(10);
-                }
+                    receivecount = soundTouch.ReceiveSamples(convertOutputBuffer.Floats, outBufferSizeFloats);
 
-                if (finished && bytesRead == 0)
-                {
-                    break;
-                }
-            } while (true);
+                    #region Test: write buffers into test.mp3
+                    //waveFileWriter.Write(convertOutputBuffer.Bytes, 0, convertOutputBuffer.Bytes.Length);
+                    //bool finish = false;
+                    //if (finish)
+                    //{
+                    //    waveFileWriter.Close();
+                    //}
+                    #endregion
+
+                    if (receivecount > 0)
+                    {
+                        provider.AddSamples(convertOutputBuffer.Bytes, 0, (int)receivecount * sizeof(float) * reader.WaveFormat.Channels, reader.CurrentTime); ;
+                        //provider.AddSamples(convertOutputBuffer.Bytes, 0, convertOutputBuffer.Bytes.Length, reader.CurrentTime); ;
+
+                        while (provider.BuffersCount > 3)
+                        {
+                            Thread.Sleep(10);
+                        } 
+                    }
+
+                    //if (finished && bytesRead == 0)
+                    //{
+                    //    break;
+                    //} 
+                } while (!stopWorker && receivecount != 0);
+            } 
 
             reader.Close();
         }
