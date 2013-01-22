@@ -5,7 +5,7 @@ A demo for NAudio &amp; SoundTouch
 
 This is a simple audio-palyer demo.   
 This demo is a simplification of Practice#. I rewrote it in C# & WPF.  
-In this demo, I use NAudio to play file, and use SoundTouch so stretch file.  
+In this demo, I use NAudio to play file, and use SoundTouch to stretch sound.  
 
 ----------
 Links:  
