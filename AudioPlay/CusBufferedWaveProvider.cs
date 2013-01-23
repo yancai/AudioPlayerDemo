@@ -6,11 +6,11 @@ using NAudio.Wave;
 namespace AudioPlay
 {
     public class CusBufferedWaveProvider : IWaveProvider
-     {
+    {
         private WaveFormat _waveFormat;
         private Queue<AudioBufferCus> _audioBufferQueue;
 
-        internal Queue<AudioBufferCus> BufferQueue { get { return _audioBufferQueue; } } 
+        internal Queue<AudioBufferCus> BufferQueue { get { return _audioBufferQueue; } }
 
         //public event EventHandler PlayPositionChanged;
 
@@ -28,7 +28,7 @@ namespace AudioPlay
             get { return _waveFormat; }
         }
 
-        
+
         public void AddSamples(byte[] buffer, int offset, int count, TimeSpan currentTime)
         {
             byte[] nbuffer = new byte[count];
@@ -101,7 +101,7 @@ namespace AudioPlay
             }
             return read;
         }
-        
+
     }
 
     internal class AudioBufferCus
